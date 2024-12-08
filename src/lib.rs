@@ -94,6 +94,10 @@ impl SinglePanelCfg {
         }
     }
 
+    fn side(&self) -> Side {
+        self.side
+    }
+
     pub fn apply_top_bottom(&self, panel: TopBottomPanel) -> TopBottomPanel {
         let panel = if let Some(b) = self.resizable {
             panel.resizable(b)
@@ -189,6 +193,15 @@ pub enum Side {
     Bottom,
 }
 
+impl Side {
+    pub fn is_lr(&self) -> bool {
+        match self {
+            Side::Left | Side::Right => true,
+            _ => false,
+        }
+    }
+}
+
 pub struct DynamicPanel {
     name: String,
     panels: Vec<PanelCfg>,
@@ -270,7 +283,7 @@ impl DynamicPanel {
         ui: &mut Ui,
         index: usize,
         content: F,
-        ) -> Option<egui::InnerResponse<R>> {
+    ) -> Option<egui::InnerResponse<R>> {
         if let Some(cfg) = self.panels.get(index) {
             Some(Self::show_panel_inside(
                 cfg.expanded(),
@@ -289,7 +302,7 @@ impl DynamicPanel {
         index: usize,
         is_expanded: bool,
         content: F,
-        ) -> Option<egui::InnerResponse<R>> {
+    ) -> Option<egui::InnerResponse<R>> {
         if let Some(cfg) = self.panels.get(index) {
             Self::show_panel_animated(cfg.expanded(), ctx, is_expanded, content, self.name.clone())
         } else {
@@ -340,31 +353,39 @@ impl DynamicPanel {
 }
 
 impl DynamicPanel {
+    fn build_side_panel(cfg: &SinglePanelCfg, name: impl Into<egui::Id>) -> SidePanel {
+        let side = if cfg.side == Side::Left {
+            egui::panel::Side::Left
+        } else {
+            egui::panel::Side::Right
+        };
+        let panel = SidePanel::new(side, name);
+        cfg.apply_side(panel)
+    }
+
+    fn build_top_bottom_panel(cfg: &SinglePanelCfg, name: impl Into<egui::Id>) -> TopBottomPanel {
+        let side = if cfg.side == Side::Top {
+            egui::panel::TopBottomSide::Top
+        } else {
+            egui::panel::TopBottomSide::Bottom
+        };
+        let panel = TopBottomPanel::new(side, name);
+        cfg.apply_top_bottom(panel)
+    }
+
     fn show_panel<R, F: Fn(&mut egui::Ui) -> R>(
         cfg: &SinglePanelCfg,
         ctx: &Context,
         content: F,
         name: impl Into<egui::Id>,
-    ) -> egui::InnerResponse<R>{
+    ) -> egui::InnerResponse<R> {
         match cfg.side {
             Side::Left | Side::Right => {
-                let side = if cfg.side == Side::Left {
-                    egui::panel::Side::Left
-                } else {
-                    egui::panel::Side::Right
-                };
-                let panel = SidePanel::new(side, name);
-                let panel: SidePanel = cfg.apply_side(panel);
+                let panel = Self::build_side_panel(cfg, name);
                 panel.show(ctx, content)
             }
             Side::Top | Side::Bottom => {
-                let side = if cfg.side == Side::Top {
-                    egui::panel::TopBottomSide::Top
-                } else {
-                    egui::panel::TopBottomSide::Bottom
-                };
-                let panel = TopBottomPanel::new(side, name);
-                let panel: TopBottomPanel = cfg.apply_top_bottom(panel);
+                let panel = Self::build_top_bottom_panel(cfg, name);
                 panel.show(ctx, content)
             }
         }
@@ -378,23 +399,11 @@ impl DynamicPanel {
     ) -> egui::InnerResponse<R> {
         match cfg.side {
             Side::Left | Side::Right => {
-                let side = if cfg.side == Side::Left {
-                    egui::panel::Side::Left
-                } else {
-                    egui::panel::Side::Right
-                };
-                let panel = SidePanel::new(side, name);
-                let panel: SidePanel = cfg.apply_side(panel);
+                let panel = Self::build_side_panel(cfg, name);
                 panel.show_inside(ui, content)
             }
             Side::Top | Side::Bottom => {
-                let side = if cfg.side == Side::Top {
-                    egui::panel::TopBottomSide::Top
-                } else {
-                    egui::panel::TopBottomSide::Bottom
-                };
-                let panel = TopBottomPanel::new(side, name);
-                let panel: TopBottomPanel = cfg.apply_top_bottom(panel);
+                let panel = Self::build_top_bottom_panel(cfg, name);
                 panel.show_inside(ui, content)
             }
         }
@@ -409,26 +418,12 @@ impl DynamicPanel {
     ) -> Option<egui::InnerResponse<R>> {
         match cfg.side {
             Side::Left | Side::Right => {
-                let side = if cfg.side == Side::Left {
-                    egui::panel::Side::Left
-                } else {
-                    egui::panel::Side::Right
-                };
-                let panel = SidePanel::new(side, name);
-                let panel: SidePanel = cfg.apply_side(panel);
-                panel
-                    .show_animated(ctx, is_expanded, content)
+                let panel = Self::build_side_panel(cfg, name);
+                panel.show_animated(ctx, is_expanded, content)
             }
             Side::Top | Side::Bottom => {
-                let side = if cfg.side == Side::Top {
-                    egui::panel::TopBottomSide::Top
-                } else {
-                    egui::panel::TopBottomSide::Bottom
-                };
-                let panel = TopBottomPanel::new(side, name);
-                let panel: TopBottomPanel = cfg.apply_top_bottom(panel);
-                panel
-                    .show_animated(ctx, is_expanded, content)
+                let panel = Self::build_top_bottom_panel(cfg, name);
+                panel.show_animated(ctx, is_expanded, content)
             }
         }
     }
@@ -442,47 +437,81 @@ impl DynamicPanel {
     ) -> Option<egui::InnerResponse<R>> {
         match cfg.side {
             Side::Left | Side::Right => {
-                let side = if cfg.side == Side::Left {
-                    egui::panel::Side::Left
-                } else {
-                    egui::panel::Side::Right
-                };
-                let panel = SidePanel::new(side, name);
-                let panel: SidePanel = cfg.apply_side(panel);
-                panel
-                    .show_animated_inside(ui, is_expanded, content)
+                let panel = Self::build_side_panel(cfg, name);
+                panel.show_animated_inside(ui, is_expanded, content)
             }
             Side::Top | Side::Bottom => {
-                let side = if cfg.side == Side::Top {
-                    egui::panel::TopBottomSide::Top
-                } else {
-                    egui::panel::TopBottomSide::Bottom
-                };
-                let panel = TopBottomPanel::new(side, name);
-                let panel: TopBottomPanel = cfg.apply_top_bottom(panel);
-                panel
-                    .show_animated_inside(ui, is_expanded, content)
+                let panel = Self::build_top_bottom_panel(cfg, name);
+                panel.show_animated_inside(ui, is_expanded, content)
             }
         }
     }
 
     fn show_panel_animated_between<R, F: Fn(&mut Ui, f32) -> R>(
-        collapsed: &PanelCfg,
-        expanded: &PanelCfg,
+        cfg: &PanelCfg,
         ctx: &Context,
         is_expanded: bool,
         content: F,
+        name: impl Into<egui::Id> + Clone,
     ) -> Option<InnerResponse<R>> {
-        todo!()
+        match (
+            cfg.collapsed().side().is_lr(),
+            cfg.expanded().side().is_lr(),
+        ) {
+            (true, true) => {
+                let collapsed = Self::build_side_panel(cfg.collapsed(), name.clone());
+                let expanded = Self::build_side_panel(cfg.expanded(), name);
+                SidePanel::show_animated_between(ctx, is_expanded, collapsed, expanded, content)
+            }
+            (false, false) => {
+                let collapsed = Self::build_top_bottom_panel(cfg.collapsed(), name.clone());
+                let expanded = Self::build_top_bottom_panel(cfg.expanded(), name);
+                TopBottomPanel::show_animated_between(
+                    ctx,
+                    is_expanded,
+                    collapsed,
+                    expanded,
+                    content,
+                )
+            }
+            (_, _) => None,
+        }
     }
 
     fn show_panel_animated_between_inside<R, F: Fn(&mut Ui, f32) -> R>(
-        collapsed: &PanelCfg,
-        expanded: &PanelCfg,
+        cfg: &PanelCfg,
         ui: &mut Ui,
         is_expanded: bool,
         content: F,
+        name: impl Into<egui::Id> + Clone,
     ) -> Option<InnerResponse<R>> {
-        todo!()
+        match (
+            cfg.collapsed().side().is_lr(),
+            cfg.expanded().side().is_lr(),
+        ) {
+            (true, true) => {
+                let collapsed = Self::build_side_panel(cfg.collapsed(), name.clone());
+                let expanded = Self::build_side_panel(cfg.expanded(), name);
+                Some(SidePanel::show_animated_between_inside(
+                    ui,
+                    is_expanded,
+                    collapsed,
+                    expanded,
+                    content,
+                ))
+            }
+            (false, false) => {
+                let collapsed = Self::build_top_bottom_panel(cfg.collapsed(), name.clone());
+                let expanded = Self::build_top_bottom_panel(cfg.expanded(), name);
+                Some(TopBottomPanel::show_animated_between_inside(
+                    ui,
+                    is_expanded,
+                    collapsed,
+                    expanded,
+                    content,
+                ))
+            }
+            _ => None,
+        }
     }
 }
