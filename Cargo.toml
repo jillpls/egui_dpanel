@@ -1,0 +1,10 @@
+[package]
+name = "egui_dpanel"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+egui = "0.29"
+
+[dev-dependencies]
+eframe = "0.29"
