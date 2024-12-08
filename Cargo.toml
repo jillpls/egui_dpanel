@@ -2,6 +2,14 @@
 name = "egui_dpanel"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Dynamic Panels for egui"
+readme = "README.md"
+repository = "https://github.com/jillpls/egui_dpanel"
+keywords = [ "gui", "imgui", "immediate", "egui", "gamedev" ]
+categories = [ "gui" ]
+exclude = [ ".idea", ".gitignore" ]
+authors = [ "Jill Please <dev@jillplease.de>" ]
 
 [dependencies]
 egui = "0.29"

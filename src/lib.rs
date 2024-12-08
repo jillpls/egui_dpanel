@@ -1,5 +1,6 @@
 use egui::{Context, Frame, InnerResponse, SidePanel, TopBottomPanel, Ui};
 
+/// Configutation for a Panel
 pub enum PanelCfg {
     Single(SinglePanelCfg),
     Collapsible(CollapsiblePanelCfg),
@@ -21,6 +22,7 @@ impl PanelCfg {
     }
 }
 
+/// Holds two configurations, for collapsed and expanded state respectively.
 pub struct CollapsiblePanelCfg {
     pub collapsed: SinglePanelCfg,
     pub expanded: SinglePanelCfg,
@@ -35,6 +37,7 @@ impl CollapsiblePanelCfg {
     }
 }
 
+/// Holds all possible configurable parameters for SidePanel/TopBottomPanel and the Side (Left, Right, Top, Bottom)
 pub struct SinglePanelCfg {
     side: Side,
     pub resizable: Option<bool>,
@@ -94,7 +97,7 @@ impl SinglePanelCfg {
         }
     }
 
-    fn side(&self) -> Side {
+    pub fn side(&self) -> Side {
         self.side
     }
 
@@ -185,6 +188,7 @@ impl SinglePanelCfg {
     }
 }
 
+/// Side of a Panel (Left, Right : Side Panel), (Top, Bottom: TopBottomPanel)
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub enum Side {
     Left,
@@ -202,13 +206,15 @@ impl Side {
     }
 }
 
-pub struct DynamicPanel {
+/// Panel that can be displayed dynamically as a `SidePanel` or `TopBottomPanel` - e.g. if the screen size is too small.
+pub struct DynamicPanel<'a> {
     name: String,
     panels: Vec<PanelCfg>,
-    choice_f: Option<Box<dyn Fn(&egui::Context) -> usize>>,
+    choice_f: Option<Box<dyn Fn(&'a egui::Context) -> usize>>,
 }
 
-impl DynamicPanel {
+impl<'a> DynamicPanel<'a> {
+    /// Constructor. Name will be used for the Panel Id.
     pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -216,9 +222,11 @@ impl DynamicPanel {
             choice_f: None,
         }
     }
+
+    /// Show the Panel dynamically, based on the choice function.
     pub fn show_dynamic<R, F: Fn(&mut egui::Ui) -> R>(
         &self,
-        ctx: &egui::Context,
+        ctx: &'a egui::Context,
         content: F,
     ) -> Option<egui::InnerResponse<R>> {
         self.choice_f
@@ -226,9 +234,10 @@ impl DynamicPanel {
             .and_then(|f| self.show(ctx, (f)(ctx), content))
     }
 
+    /// Show the Panel dynamically inside a Ui, based on the choice function.
     pub fn show_dynamic_inside<R, F: Fn(&mut egui::Ui) -> R>(
         &self,
-        ctx: &Context,
+        ctx: &'a Context,
         ui: &mut Ui,
         content: F,
     ) -> Option<egui::InnerResponse<R>> {
@@ -237,9 +246,10 @@ impl DynamicPanel {
             .and_then(|f| self.show_inside(ui, f(ctx), content))
     }
 
+    /// Show the Panel dynamically and animated, based on the choice function.
     pub fn show_dynamic_animated<R, F: Fn(&mut egui::Ui) -> R>(
         &self,
-        ctx: &egui::Context,
+        ctx: &'a Context,
         is_expanded: bool,
         content: F,
     ) -> Option<egui::InnerResponse<R>> {
@@ -248,9 +258,10 @@ impl DynamicPanel {
             .and_then(|f| self.show_animated(ctx, f(ctx), is_expanded, content))
     }
 
+    /// Show the Panel dynamically and animated inside a Ui, based on the choice function.
     pub fn show_dynamic_animated_inside<R, F: Fn(&mut egui::Ui) -> R>(
         &self,
-        ctx: &egui::Context,
+        ctx: &'a Context,
         ui: &mut Ui,
         is_expanded: bool,
         content: F,
@@ -260,9 +271,10 @@ impl DynamicPanel {
             .and_then(|f| self.show_animated_inside(ui, f(ctx), is_expanded, content))
     }
 
+    /// Show the Panel with the given index for its saved configuration. If you don't need manual control, use `show_dynamic` instead.
     pub fn show<R, F: Fn(&mut egui::Ui) -> R>(
         &self,
-        ctx: &egui::Context,
+        ctx: &'a Context,
         index: usize,
         content: F,
     ) -> Option<egui::InnerResponse<R>> {
@@ -278,6 +290,7 @@ impl DynamicPanel {
         }
     }
 
+    /// Show the Panel inside a Ui with the given index for its saved configuration. If you don't need manual control, use `show_dynamic` instead.
     pub fn show_inside<R, F: Fn(&mut egui::Ui) -> R>(
         &self,
         ui: &mut Ui,
@@ -296,9 +309,10 @@ impl DynamicPanel {
         }
     }
 
+    /// Show the Panel with animation with the given index for its saved configuration. If you don't need manual control, use `show_dynamic` instead.
     pub fn show_animated<R, F: Fn(&mut egui::Ui) -> R>(
         &self,
-        ctx: &egui::Context,
+        ctx: &'a Context,
         index: usize,
         is_expanded: bool,
         content: F,
@@ -310,6 +324,7 @@ impl DynamicPanel {
         }
     }
 
+    /// Show the Panel with animation inside a Ui with the given index for its saved configuration. If you don't need manual control, use `show_dynamic` instead.
     pub fn show_animated_inside<R, F: Fn(&mut egui::Ui) -> R>(
         &self,
         ui: &mut Ui,
@@ -331,14 +346,22 @@ impl DynamicPanel {
     }
 }
 
-impl DynamicPanel {
-    pub fn dual(mut self, first : PanelCfg, second: PanelCfg) -> Self {
+impl<'a> DynamicPanel<'a> {
+    /// Convenience function for creating a breaking panel.
+    pub fn dual(mut self, first: PanelCfg, second: PanelCfg) -> Self {
         self.panels = vec![first, second];
         self
     }
 
-    pub fn with_threshold_function<F: Fn(&Context) -> bool>(mut self, f : F) -> Self {
-        let f = |ctx| { if f(ctx) { 1 } else { 0 }};
+    /// Convenience function to allow a choice function between index 0 and 1. (true = 1)
+    pub fn with_threshold_function<F: Fn(&'a Context) -> bool + 'static>(mut self, f: F) -> Self {
+        let f = move |ctx| {
+            if f(ctx) {
+                1
+            } else {
+                0
+            }
+        };
         self.choice_f = Some(Box::new(f));
         self
     }
@@ -354,7 +377,7 @@ impl DynamicPanel {
         index
     }
 
-    pub fn with_choice_function<F: Fn(&Context) -> usize + 'static>(
+    pub fn with_choice_function<F: Fn(&'a Context) -> usize + 'static>(
         mut self,
         choice_function: F,
     ) -> Self {
@@ -363,7 +386,7 @@ impl DynamicPanel {
     }
 }
 
-impl DynamicPanel {
+impl<'a> DynamicPanel<'a> {
     fn build_side_panel(cfg: &SinglePanelCfg, name: impl Into<egui::Id>) -> SidePanel {
         let side = if cfg.side == Side::Left {
             egui::panel::Side::Left
@@ -386,7 +409,7 @@ impl DynamicPanel {
 
     fn show_panel<R, F: Fn(&mut egui::Ui) -> R>(
         cfg: &SinglePanelCfg,
-        ctx: &Context,
+        ctx: &'a Context,
         content: F,
         name: impl Into<egui::Id>,
     ) -> egui::InnerResponse<R> {
@@ -422,7 +445,7 @@ impl DynamicPanel {
 
     fn show_panel_animated<R, F: Fn(&mut egui::Ui) -> R>(
         cfg: &SinglePanelCfg,
-        ctx: &Context,
+        ctx: &'a Context,
         is_expanded: bool,
         content: F,
         name: impl Into<egui::Id>,
@@ -460,7 +483,7 @@ impl DynamicPanel {
 
     fn show_panel_animated_between<R, F: Fn(&mut Ui, f32) -> R>(
         cfg: &PanelCfg,
-        ctx: &Context,
+        ctx: &'a Context,
         is_expanded: bool,
         content: F,
         name: impl Into<egui::Id> + Clone,
