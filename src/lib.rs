@@ -332,6 +332,17 @@ impl DynamicPanel {
 }
 
 impl DynamicPanel {
+    pub fn dual(mut self, first : PanelCfg, second: PanelCfg) -> Self {
+        self.panels = vec![first, second];
+        self
+    }
+
+    pub fn with_threshold_function<F: Fn(&Context) -> bool>(mut self, f : F) -> Self {
+        let f = |ctx| { if f(ctx) { 1 } else { 0 }};
+        self.choice_f = Some(Box::new(f));
+        self
+    }
+
     pub fn with_panels(mut self, panels: Vec<PanelCfg>) -> Self {
         self.panels = panels;
         self
